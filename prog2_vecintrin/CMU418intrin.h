@@ -44,11 +44,11 @@ __cmu418_mask _cmu418_mask_or(__cmu418_mask &maska, __cmu418_mask &maskb);
 // Return (maska & maskb)
 __cmu418_mask _cmu418_mask_and(__cmu418_mask &maska, __cmu418_mask &maskb);
 
-// Count the number of 1s in maska
+// Count the number of 1s in maska 统计maska中非0元素个数
 int _cmu418_cntbits(__cmu418_mask &maska);
 
 // Set register to value if vector lane is active
-//  otherwise keep the old value
+//  otherwise keep the old value 如果mask对应位置为True,则置为value,否则保持不变
 void _cmu418_vset_float(__cmu418_vec_float &vecResult, float value, __cmu418_mask &mask);
 void _cmu418_vset_int(__cmu418_vec_int &vecResult, int value, __cmu418_mask &mask);
 // For user's convenience, returns a vector register with all lanes initialized to value

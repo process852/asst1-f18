@@ -117,11 +117,57 @@ typedef struct {
 //
 // Thread entrypoint.
 void* workerThreadStart(void* threadArgs) {
-
+    // 统计单个线程的执行事件
+    double startTime = CycleTimer::currentSeconds();
     WorkerArgs* args = static_cast<WorkerArgs*>(threadArgs);
+    // 统计一下不同线程块迭代计算的平均次数
+    float iters = 0.0f;
 
     // TODO: Implement worker thread here.
+    // 将图像在空间上划分为两个部分，并行执行，在垂直方向划分
 
+    // version1
+    // 顺序划分 block 可能会引入数据负载偏置，某一块数据计算相对简单
+    // float dx = (args->x1 - args->x0) / args->width;
+    // float dy = (args->y1 - args->y0) / args->height;
+    // unsigned int numThreads_u = (unsigned int) args->numThreads;
+    // int block = args->height % numThreads_u ? args->height / numThreads_u + 1 : args->height / numThreads_u;
+
+    // int startRow = args->threadId * block;
+    // int endRow = (args->threadId + 1) * block;
+    // for(int j = startRow; j < (int)args->height && j < endRow; j++){
+    //     for(int i = 0; i < (int)args->width; i++){
+    //         float x = args->x0 + i * dx;
+    //         float y = args->y0 + j * dy;
+
+    //         int index = (j * (int)args->width + i);
+    //         args->output[index] = mandel(x, y, args->maxIterations);
+    //         iters += (float) args->output[index];
+    //     }
+    // }
+
+    // version2
+    // 每个线程块跳跃取出每一行进行并行计算
+    float dx = (args->x1 - args->x0) / args->width;
+    float dy = (args->y1 - args->y0) / args->height;
+    unsigned int numThreads_u = (unsigned int) args->numThreads;
+    int block = args->height % numThreads_u ? args->height / numThreads_u + 1 : args->height / numThreads_u;
+    int rowJ = args->threadId;
+    for(int j = 0; rowJ < (int)args->height && j < block; j++){
+        for(int i = 0; i < (int)args->width; i++){
+            float x = args->x0 + i * dx;
+            float y = args->y0 + rowJ * dy;
+
+            int index = (rowJ * (int)args->width + i);
+            args->output[index] = mandel(x, y, args->maxIterations);
+            iters += (float) args->output[index];
+        }
+        rowJ += args->numThreads;
+    }
+
+    double endTime = CycleTimer::currentSeconds();
+    printf("[finish thread %d]:\t\t[%.3f] ms\n", args->threadId, (endTime - startTime) * 1000);
+    printf("This thread average iters are %.2f\n", iters / (block * args->width));
     printf("Hello world from thread %d\n", args->threadId);
 
     return NULL;
@@ -152,6 +198,15 @@ void mandelbrotThread(
     for (int i=0; i<numThreads; i++) {
         // TODO: Set thread arguments here.
         args[i].threadId = i;
+        args[i].x0 = x0;
+        args[i].x1 = x1;
+        args[i].y0 = y0;
+        args[i].y1 = y1;
+        args[i].width = width;
+        args[i].height = height;
+        args[i].maxIterations = maxIterations;
+        args[i].output = output;
+        args[i].numThreads = numThreads;
     }
 
     // Fire up the worker threads.  Note that numThreads-1 pthreads
