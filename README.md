@@ -40,5 +40,25 @@ arraySumVector() in file functions.cpp. Your implementation may assume that W is
 factor of the input array size N. Whereas the serial implementation has O(N) span, your implementation should have at most O(N/W + log2 W) span. You may find the hadd and interleave
 operations useful.
 
+## Problem 3: Parallel Fractal Generation Using ISPC (15 points)
 
+#### 3.1 Problem 3, Part 1. A Few ISPC Basics (7 of 15 points)
 
+熟悉利用 [ISPC](https://github.com/ispc/ispc) (Implicit SPMD Program Compiler)是一种程序编译器，用于处理单程序多数据的模式。ISPC是一种基于C语言扩展的编程语言用于在CPUS或GPUS上运行单程序多数据(SIMD)的单元。它提供了基于 4-wide vector SEE单元加速以及 8-wide AVX vector单元加速。同时也支持多个核的并行加速计算。
+
+* ISPC 安装
+
+```bash
+snap install ispc # wsl暂时不支持
+
+wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
+
+echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
+
+sudo apt-get update
+sudo apt-get install intel-oneapi-ispc
+
+// /opt/intel/oneapi/ispc/latest/bin/ispc 安装所在位置
+// 添加到 PATH 路径
+source /opt/intel/oneapi/ispc/latest/env/vars.sh
+```
