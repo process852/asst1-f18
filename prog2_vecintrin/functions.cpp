@@ -149,4 +149,25 @@ float arraySumSerial(float* values, int N) {
 float arraySumVector(float* values, int N) {
     // Implement your vectorized version here
     //  ...
+	// 将数组N按照 VECTOR_WIDTH 进行均匀切分并进行向量化操作
+	int blocks = N / VECTOR_WIDTH;
+	__cmu418_vec_float result, nextBlock;
+	__cmu418_mask maskAll;
+	maskAll = _cmu418_init_ones(VECTOR_WIDTH);
+
+	_cmu418_vset_float(result, 0.0f, maskAll);
+
+	for(int i = 0; i < blocks; i++){
+		// load next vector
+		_cmu418_vload_float(nextBlock, values + i * VECTOR_WIDTH, maskAll);
+		// add vector
+		_cmu418_vadd_float(result, result, nextBlock, maskAll);
+	}
+	int arrayLen = VECTOR_WIDTH;
+	while(arrayLen > 1){
+		_cmu418_hadd_float(result, result);
+		_cmu418_interleave_float(result, result);
+		arrayLen /= 2;
+	}
+	return result.value[0];
 }
