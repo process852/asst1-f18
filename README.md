@@ -62,3 +62,109 @@ sudo apt-get install intel-oneapi-ispc
 // 添加到 PATH 路径
 source /opt/intel/oneapi/ispc/latest/env/vars.sh
 ```
+
+ispc example:
+
+```bash
+ispc simple.ispc -h simple_ispc.h
+ispc -O2 simple.ispc -o simple.obj
+g++ simple.cpp simple_ispc.h simple.obj -o main
+```
+
+* `export` 限定符表示 ISPC 函数可以被C/C++代码调用
+* 函数直接使用C/C++传递的参数，没有API调用和动态库使用
+* 所有参数必须都使用 `uniform` 限定符标识，即所有程序实例拥有相同的变量值
+* 输出缓冲区的指针被传递为无大小的数组首地址元素
+
+```C++
+export void mandelbrot_ispc(uniform float x0, uniform float y0,
+                            uniform float x1, uniform float y1,
+                            uniform int width, uniform int height,
+                            uniform int maxIterations,
+                            uniform int output[])
+{
+    float dx = (x1 - x0) / width;
+    float dy = (y1 - y0) / height;
+
+    for (uniform int j = 0; j < height; j++) {
+        // Note that we'll be doing programCount computations in parallel,
+        // so increment i by that much.  This assumes that width evenly
+        // divides programCount.
+        foreach (i = 0 ... width) {
+            // Figure out the position on the complex plane to compute the
+            // number of iterations at.  Note that the x values are
+            // different across different program instances, since its
+            // initializer incorporates the value of the programIndex
+            // variable.
+            float x = x0 + i * dx;
+            float y = y0 + j * dy;
+
+            int index = j * width + i;
+            output[index] = mandel(x, y, maxIterations);
+        }
+    }
+}
+```
+
+基本概念：
+
+* 一系列ISPC程序实例并发的运行，正在运行的程序实例组称为 `gang`。一个ispc程序实例类似于CUDA编程中的"thread"概念。
+
+1. Compile and run the program mandelbrot.ispc. The ISPC compiler is configured to emit 8-
+wide AVX2 vector instructions. What is the maximum speedup you expect given what you know
+about these CPUs? Why might the number you observe be less than this ideal? Hint: Consider the characteristics of the computation you are performing. What parts of the image present challenges for SIMD execution? Comparing the performance of rendering the different views of the Mandelbrot set may help confirm your hypothesis.
+
+输出结果：
+
+```text
+[mandelbrot serial]:            [185.511] ms
+Wrote image file mandelbrot-serial.ppm
+[mandelbrot ispc]:              [39.122] ms
+Wrote image file mandelbrot-ispc.ppm
+                                (4.74x speedup from ISPC)
+```
+
+加速效果不理想的原因：
+* 不同图像视角的计算困难度是不一致的
+
+| view | speedup | 
+| :------| :------: | 
+| 1 | 4.74x | 
+| 2 | 4.09x | 
+| 3 | 4.65x | 
+| 4 | 4.49x | 
+| 5 | 3.35x | 
+| 6 | 4.93x |
+
+* 并没有充分利用多核心处理单元
+
+
+#### 3.2 Problem 3, Part 2: ISPC Tasks (8 of 15 points)
+
+ispc 不仅可以提高在单个处理器核心上的加速效果，还可以促进在多个处理核心上的并行执行（通过`launch`关键字进行异步函数调用）。任何函数需要使用`launch`发布的任务都需要利用关键字`task`标识函数，且该函数必须返回`void`。
+
+```C++
+task void func(uniform float a[], uniform int index) {
+    ...
+    a[index] = ....
+}
+
+利用关键字 `launch` 发布异步的任务流
+
+```C++
+uniform float a[...] = ...;
+launch func(a, 1);
+```
+
+改用多核心处理后，加速明显，执行命令 `./mandelbrot_ispc -v 1 --tasks`
+
+```
+[mandelbrot serial]:            [185.371] ms
+Wrote image file mandelbrot-serial.ppm
+[mandelbrot ispc]:              [38.675] ms
+Wrote image file mandelbrot-ispc.ppm
+[mandelbrot multicore ispc]:    [9.589] ms
+Wrote image file mandelbrot-task-ispc.ppm
+                                (4.79x speedup from ISPC)
+                                (19.33x speedup from task ISPC)
+```

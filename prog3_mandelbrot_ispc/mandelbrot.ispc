@@ -68,8 +68,8 @@ export void mandelbrot_ispc_withtasks(uniform float x0, uniform float y0,
                                       uniform int output[])
 {
 
-    uniform int threadCount = 2;
-    uniform int rowsPerTask = height / threadCount;
+    uniform int threadCount = 10; // 分配逻辑核心的数量
+    uniform int rowsPerTask = (height + threadCount - 1) / threadCount; // 向上取整
 
     // create threadCount tasks
     launch[threadCount] mandelbrot_ispc_task(x0, y0, x1, y1,
