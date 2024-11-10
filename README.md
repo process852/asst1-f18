@@ -168,3 +168,6 @@ Wrote image file mandelbrot-task-ispc.ppm
                                 (4.79x speedup from ISPC)
                                 (19.33x speedup from task ISPC)
 ```
+
+## 4 Problem 4: Iterative Square Root (10 points)
+
